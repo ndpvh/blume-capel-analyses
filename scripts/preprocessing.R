@@ -63,8 +63,27 @@ medium_data1 <- medium_rare_data1 %>%
   rename_with(~str_remove(., "_1$"), ends_with("_1")) %>%
   mutate(
     Meat_Imp = rowMeans(across(c(Imp.Meat, Direct.Meat, Future.Meat))),
-    Econ_Imp = rowMeans(across(c(Imp.Econ, Direct.Econ, Future.Econ)))
-  )
+    Econ_Imp = rowMeans(across(c(Imp.Econ, Direct.Econ, Future.Econ))),
+    Econ_Mids_Pre = rowSums(
+      across(matches("^(HC.Pre|Tariff.Pre|Costs.Pre)"), ~ .x %in% c(3, 6, 7, 8, 9)),
+      na.rm = TRUE
+    ),
+    Econ_Mids_Pre = rowSums(
+      across(matches("^(HC.Pre|Tariff.Pre|Costs.Pre)"), ~ .x %in% c(3, 6, 7, 8, 9)),
+      na.rm = TRUE
+    ),
+    Econ_Mids_Post = rowSums(
+      across(matches("^(HC.Post|Tariff.Post|Costs.Post)"), ~ .x %in% c(3, 6, 7, 8, 9)),
+      na.rm = TRUE
+    ),
+    Meat_Mids_Pre = rowSums(
+      across(matches("^Meat.Pre"), ~ .x %in% c(3, 6, 7, 8, 9)),
+      na.rm = TRUE
+    ),
+    Meat_Mids_Post = rowSums(
+      across(matches("^Meat.Post"), ~ .x %in% c(3, 6, 7, 8, 9)),
+      na.rm = TRUE
+    ))
 
 
 all_pre_data <- medium_data1 %>% select(1, 3:11,, 28, 29, 31:33, 45:56)
