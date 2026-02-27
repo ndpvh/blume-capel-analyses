@@ -2,11 +2,11 @@
 # PURPOSE: Preprocessing the data to get them in useful shapes.
 ################################################################################
 
+# Assuming you start from ~/blume-capel-analyses/
 
-setwd("../folder-name")
 library("tidyverse")
 library("haven")
-source("lazy functions v2.R")
+source("./scripts/lazy functions v2.R")
 
 
 ############
@@ -15,7 +15,7 @@ source("lazy functions v2.R")
 
 ############
 
-pseudo_data <- read.csv2("pseudo_data.csv")
+pseudo_data <- read.csv2("./data/pseudo_data.csv")
 
 raw_recoded1 <- recode_items(pseudo_data)
 
@@ -47,15 +47,17 @@ medium_rare_data1 <- rare_data1 %>% filter(IC.Agree == 1)
 
 
 # Yeah I misspelled "tariff" in the var names
+# But not in the survey itself =]
 medium_rare_data1 <- medium_rare_data1 %>%
   rename_with(~ str_replace_all(., regex("Tarr?iff?s?", ignore_case = TRUE), "Tariff"))
 
 
+# For this one, ignore the warning about NAs. It's a lie, I checked!
 medium_data1 <- medium_rare_data1 %>%
   left_join(
     raw_recoded1 %>%
       select(pseudo, 20:27) %>%
-      mutate(across(2:9, as.numeric)),# adjust numbers to match your columns
+      mutate(across(2:9, as.numeric)),
     by = "pseudo"
   ) %>%
   rename_with(~str_remove(., "_1$"), ends_with("_1")) %>%
@@ -178,9 +180,6 @@ all_changes <- medium_data1 %>%
       TRUE ~ 0
     ))
 
-save(all_changes, file = "all_items_within.Rdata")
-
-
 
 all_changes_long <- all_changes %>%
   pivot_longer(
@@ -194,15 +193,12 @@ all_changes_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_changes_long, file = "all_items_wi_long.Rdata")
-
 
 
 all_changes_rewide <- all_changes_long %>%
   pivot_wider(names_from = time, values_from = midpoint) %>%
   mutate(moved_to_mid = as.integer(pre_mid == 0 & post_mid == 1))
 
-save(all_changes_rewide, file = "all_changes_rewide.Rdata")
 
 all_changers <- all_changes_rewide %>%
   filter(pre_mid != post_mid) %>%
@@ -233,7 +229,6 @@ all_mids_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_mids_long, file = "all_mids_long.Rdata")
 
 all_mids_long <- all_changes %>%
   pivot_longer(
@@ -247,7 +242,6 @@ all_mids_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_mids_long, file = "all_mids_long.Rdata")
 
 all_inte_long <- all_changes %>%
   pivot_longer(
@@ -261,13 +255,11 @@ all_inte_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_inte_long, file = "all_inte_long.Rdata")
 
 all_inte_rewide <- all_inte_long %>%
   pivot_wider(names_from = time, values_from = inte) %>%
   mutate(moved_to_mid = as.integer(pre_inte == 0 & post_inte == 1))
 
-save(all_inte_rewide, file = "all_inte_rewide.Rdata")
 
 
 all_neut_long <- all_changes %>%
@@ -282,13 +274,11 @@ all_neut_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_neut_long, file = "all_neut_long.Rdata")
 
 all_neut_rewide <- all_neut_long %>%
   pivot_wider(names_from = time, values_from = neut) %>%
   mutate(moved_to_mid = as.integer(pre_neut == 0 & post_neut == 1))
 
-save(all_neut_rewide, file = "all_neut_rewide.Rdata")
 
 all_neut_long <- all_changes %>%
   pivot_longer(
@@ -302,13 +292,10 @@ all_neut_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_neut_long, file = "all_neut_long.Rdata")
 
 all_neut_rewide <- all_neut_long %>%
   pivot_wider(names_from = time, values_from = neut) %>%
   mutate(moved_to_mid = as.integer(pre_neut == 0 & post_neut == 1))
-
-save(all_neut_rewide, file = "all_neut_rewide.Rdata")
 
 all_amb_long <- all_changes %>%
   pivot_longer(
@@ -322,11 +309,9 @@ all_amb_long <- all_changes %>%
     item = paste(var, num, sep = "_")
   )
 
-save(all_amb_long, file = "all_amb_long.Rdata")
 
 all_amb_rewide <- all_amb_long %>%
   pivot_wider(names_from = time, values_from = amb) %>%
   mutate(moved_to_mid = as.integer(pre_amb == 0 & post_amb == 1))
 
-save(all_amb_rewide, file = "all_amb_rewide.Rdata")
 
