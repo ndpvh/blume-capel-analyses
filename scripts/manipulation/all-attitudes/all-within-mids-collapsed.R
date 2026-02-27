@@ -27,9 +27,13 @@ library(lme4)
 library(clipr)
 
 source("./scripts/preprocessing.R")
-source("./scripts/lazy functions v2.R")
+source("./scripts/lazy-functions-v2.R")
+
+
 
 ############
+
+
 
 # Interaction time and condition. Midpoint = binary coding of whether
 # a midpoint was chosen or not.
@@ -79,7 +83,7 @@ global_changes4 <- summary(all_mid_change4)
 
 ############
 
-#Interaction time, Condition, Knowledge
+# Interaction time, Condition, Knowledge
 
 ############
 
@@ -90,11 +94,23 @@ all_mid_change5 <- glmer(midpoint ~ time*Condition*scale(Knowledge) + (1|pseudo)
 
 global_changes5 <- summary(all_mid_change5)
 
+############
+
+# Interaction time, Importance
+
+############
+
 gc6 <- glmer(midpoint ~ time*scale(Importance) + (1|pseudo) + (1|item),
              data = all_changes_long,
              family = binomial)
 
 global_changes6 <- summary(gc6)
+
+############
+
+# Interaction time, Knowledge
+
+############
 
 gc7 <- glmer(midpoint ~ time*scale(Knowledge) + (1|pseudo) + (1|item),
       data = all_changes_long,
