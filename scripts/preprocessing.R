@@ -6,7 +6,7 @@
 
 library("tidyverse")
 library("haven")
-source("./scripts/lazy functions v2.R")
+source("./scripts/lazy-functions-v2.R")
 
 
 ############
