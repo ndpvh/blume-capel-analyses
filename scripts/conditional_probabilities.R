@@ -389,3 +389,30 @@ results <- lapply(
     `names<-` (unique(data$condition))
 
 saveRDS(results, file.path("results", "midpoint-condition.Rds"))
+
+# ANALYSIS 4: 
+#   - Across all items 
+#   - Within condition 
+#   - Midpoint - Valenced
+results <- lapply(
+    unique(data$condition),
+    function(y) estimate(
+        data = data[data$condition == y, ],
+        x = list(
+            "indifferent" = "indifferent", 
+            "reluctant" = "reluctant", 
+            "cautious" = "cautious", 
+            "neutral" = "neutral", 
+            "ambivalent" = "ambivalent",
+            "valenced" = c("strongly_disagree", "disagree", "agree", "strongly_agree")
+        ),
+        model_name = "midpoint-differentiated-condition",
+        verbose = TRUE, 
+        cores = 4, 
+        iter = 20000, 
+        warmup = 10000
+    )
+) |>
+    `names<-` (unique(data$condition))
+
+saveRDS(results, file.path("results", "midpoint-differentiated-condition.Rds"))
