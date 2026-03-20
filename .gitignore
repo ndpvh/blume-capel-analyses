@@ -1,3 +1,6 @@
 *.docx
 *.pdf
 results/*
+*_RAW*
+*Niels*
+data/MILLER_1*
