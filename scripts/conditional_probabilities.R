@@ -173,7 +173,7 @@ estimate <- function(data,
                      .cols = NULL,
                      model = file.path("models", "conditional_probabilities.stan"),
                      filename = NULL,
-                     priors = list("alpha" = 1e-3, "beta" = 1e-3),
+                     priors = list("mu" = 0, "sigma" = 1),
                      conditions = "control - integration - conflict",
                      ...) {
 

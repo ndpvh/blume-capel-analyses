@@ -17,8 +17,8 @@ data {
     array[m, 2] int<lower = 1> diff_indices;
 
     // Priors provided by the user
-    real<lower = 0> alpha;
-    real<lower = 0> beta;
+    real mu;
+    real<lower = 0> sigma;
 }
 
 parameters {
@@ -34,7 +34,7 @@ model {
             target += binomial_lpmf(n_switches[, j, i] | col_totals[j, i], theta[, j, i]);
 
             // Priors
-            target += beta_lpdf(theta[, j, i] | alpha, beta); 
+            target += inv_logit(normal_lpdf(theta[, j, i] | mu, sigma));
         }
     }
 }
