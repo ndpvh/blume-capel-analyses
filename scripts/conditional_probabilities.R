@@ -488,8 +488,8 @@ results <- estimate(
     filename = file.path("results", "baseline.Rds"),
     verbose = TRUE, 
     cores = 4, 
-    iter = 20000, 
-    warmup = 10000
+    iter = 50000, 
+    warmup = 25000
 )
 
 # ANALYSIS 2: 
@@ -506,8 +506,8 @@ results <- estimate(
     filename = file.path("results", "midpoint.Rds"),
     verbose = TRUE, 
     cores = 4, 
-    iter = 20000, 
-    warmup = 10000
+    iter = 50000, 
+    warmup = 25000
 )
 
 # ANALYSIS 3: 
@@ -530,8 +530,8 @@ results <- estimate(
     ),
     verbose = TRUE, 
     cores = 4, 
-    iter = 20000, 
-    warmup = 10000
+    iter = 50000, 
+    warmup = 25000
 )
 
 # ANALYSIS 4: 
@@ -558,8 +558,8 @@ results <- estimate(
     ),
     verbose = TRUE, 
     cores = 4, 
-    iter = 40000, 
-    warmup = 20000
+    iter = 50000, 
+    warmup = 25000
 )
 
 # For the final analysis, let's look at the differences between conditions
