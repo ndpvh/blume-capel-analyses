@@ -160,14 +160,21 @@ data.table::fwrite(
 # saved. Needs to include one of the R object extensions.
 # @param priors Named list containing the priors to be used within the estimation
 # procedure
+# @param conditions Character vector containing the names of the conditions to 
+# consider for the estimation procedure. Each character should contain the 
+# names of the conditions that you would like to merge. For example, the default
+# uses all data for the estimation procedure 
+# (`"control - integration - conflict"`). Note that the differences of the 
+# probabilities are made for all unique instances in this character vector.
 # @param ... Arguments passed on to the stan function from rstan, defining the 
 # sampling procedure
-estimate <- function(data = data, 
+estimate <- function(data, 
                      x = NULL, 
                      .cols = NULL,
                      model = file.path("models", "conditional_probabilities.stan"),
                      filename = NULL,
                      priors = list("alpha" = 1e-3, "beta" = 1e-3),
+                     conditions = "control - integration - conflict",
                      ...) {
 
     # Select those columns of the data that are relevant for the estimation. 
@@ -218,44 +225,105 @@ estimate <- function(data = data,
         `colnames<-` (c("s_t", "s_0")) |>
         dplyr::relocate(s_0, s_t)
 
+    # Add rownames to this matrix to make the connection to the parameters. 
+    # A partial match is enough, which is why I only provide one here
+    indices <- expand.grid(seq_along(x), seq_along(x))
+    nm <- sapply(
+        seq_len(nrow(indices)), 
+        function(x) paste0(
+            "theta[",
+            indices[x, 1], 
+            ",", 
+            indices[x, 2]
+        )
+    )
+    combos <- combos |>
+        `rownames<-` (nm)
+
     # Create the variables needed to estimate the conditional probability model.
     # This includes:
-    #   - counts: A matrix containing the number of people who started out in 
+    #   - counts: An array containing the number of people who started out in 
     #             an initial state (columns) and moved to a particular state 
-    #             after the task inbetween (rows)
+    #             after the task inbetween (rows) per condition (3rd dimension)
     #   - totals: A numerical vector containing the number of people who started
     #             out in a particular state, amounting to the sum of the columns
     d <- length(x)
-    counts <- matrix(0, nrow = d, ncol = d)
-    for(i in seq_len(nrow(combos))) {
-        # Extract the pre and post and make sure they're just vectors
-        pre <- data[, paste0(.cols, "_pre")] |>
-            unlist() |>
-            as.character()
-        post <- data[, paste0(.cols, "_post")] |>
-            unlist() |>
-            as.character()
+    n <- length(conditions)
+    f <- 1
 
-        # Look at how many people start in a particular state and, of these, how 
-        # many then moved to the target state
-        counts[i] <- sum(pre == combos$s_0[i] & post == combos$s_t[i])
+    counts <- array(0, dim = c(d, d, n))
+    totals <- matrix(0, nrow = d, ncol = n)
+    for(i in seq_along(conditions)) {
+        idx <- sapply(
+            data$condition,
+            function(x) grepl(x, conditions[i], fixed = FALSE)
+        )
+
+        for(j in seq_len(nrow(combos))) {
+            # Extract the pre and post and make sure they're just vectors
+            pre <- data[idx, paste0(.cols, "_pre")] |>
+                unlist() |>
+                as.character()
+            post <- data[idx, paste0(.cols, "_post")] |>
+                unlist() |>
+                as.character()
+
+            # Look at how many people start in a particular state and, of these, how 
+            # many then moved to the target state
+            counts[f] <- sum(pre == combos$s_0[j] & post == combos$s_t[j])
+            f <- f + 1
+        }
+        totals[, i] <- colSums(counts[, , i])
     }
-    
-    totals <- colSums(counts)
+
+    # We also need some additional information for the comparisions between 
+    # conditions. Namely indicating how many of these differences should be 
+    # created and which differences should be taken
+    #
+    # If only one condition is provided, leave it at this. If multiple 
+    # conditions are provided, then remove all conditions that are the same
+    comparison <- expand.grid(
+        seq_along(conditions), 
+        seq_along(conditions)
+    ) |>
+        `colnames<-` (NULL) |>
+        `rownames<-` (NULL) |>
+        unlist() |>
+        as.integer() |>
+        matrix(ncol = 2)
+
+    if(length(conditions) > 1) {
+        # Remove conditions that are the same
+        comparison <- comparison[comparison[, 1] != comparison[, 2], ]
+
+        # Remove doubles through creating a unique code
+        code <- sapply(
+            seq_len(nrow(comparison)),
+            function(x) paste(sort(comparison[x, ]), collapse = "")
+        )
+        comparison <- comparison[!duplicated(code), ]
+    }
 
     # Compute a conditional probability matrix, representing the data that we
     # are working with here
-    prob <- counts / rep(totals, each = d)
+    prob <- counts
+    for(i in seq_len(dim(prob)[3])) {
+        prob[, , i] <- counts[, , i] / rep(totals[, i], each = d)
+    }
     
-    # Define the data to be used by the model. First create them hard-coded, then
+    # Define the data to be used by the model. First put them in a list and then
     # append the priors provided by the user
     mode(counts) <- "integer"
     mode(totals) <- "integer"
+    mode(comparison) <- "integer"
 
     stan_data <- list(
         "d" = as.integer(d),
+        "n" = as.integer(dim(counts)[3]),
         "n_switches" = counts, 
-        "col_totals" = totals
+        "col_totals" = totals,
+        "m" = nrow(comparison),
+        "diff_indices" = comparison
     )
     stan_data <- append(stan_data, priors)
 
@@ -273,6 +341,7 @@ estimate <- function(data = data,
 
     # Create some summaries across all chains.
     parameters <- names(fit@sim$samples[[1]])
+    parameters <- parameters[!(parameters %in% c("idx_1", "idx_2"))]
     results <- lapply(
         seq_along(parameters),
         function(i) {
@@ -282,12 +351,39 @@ estimate <- function(data = data,
                 function(x) fit@sim$samples[[x]][[parameters[i]]]
             )
 
+            # Add some information about the conditions. Different for the case
+            # in which you're looking at difference parameters and non-difference
+            # parameters
+            if(parameters[i] != "lp__") {
+                idx <- substring(
+                    parameters[i], 
+                    nchar(parameters[i]) - 1, 
+                    nchar(parameters[i]) - 1
+                ) |>
+                    as.integer()
+            }
+
+            if(grepl("_diff", parameters[i], fixed = TRUE)) {
+                idx <- comparison[idx, ]
+                condition_1 <- conditions[idx[1]]
+                condition_2 <- conditions[idx[2]]
+
+            } else if(parameters[i] == "lp__") {
+                condition_1 <- condition_2 <- NA 
+
+            } else {
+                condition_1 <- conditions[idx]
+                condition_2 <- NA
+            }
+
             # Create the summary statistics
             return(
                 data.frame(
+                    condition_1 = condition_1,
+                    condition_2 = condition_2,
                     parameter = parameters[i], 
-                    from = combos$s_0[i],
-                    to = combos$s_t[i],
+                    from = NA,
+                    to = NA,
                     mean = mean(results),
                     sd = sd(results),
                     q025 = quantile(results, prob = 0.025),
@@ -305,16 +401,60 @@ estimate <- function(data = data,
     results <- do.call("rbind", results) |>
         `rownames<-` (NULL) 
 
-    results <- results |>
+    # Split the data up in the part about raw estimations and the part about the 
+    # comparison between conditions.
+    idx <- grepl("_diff", results$parameter, fixed = TRUE)
+
+    results_fit <- results[!idx, ]
+    results_comp <- results[idx, ]
+
+    # For the estimation results, add the observed counts and probabilities and 
+    # remove the condition_2 column
+    results_fit <- results_fit |>
         dplyr::mutate(
             observed_count = c(as.integer(counts), NA),
             observed_probability = c(as.numeric(prob), NA)
         ) |>
+        dplyr::rename(condition = condition_1) |>
+        dplyr::select(-condition_2) |>
         dplyr::relocate(
+            condition,
             parameter, 
             observed_count, 
             observed_probability
         )
+        
+    # For the comparison results, change the parameter names to conform to those
+    # in the fitting data.frame and add whether 0 is part of the 95%CrI. 
+    # Furthermore add the `from` and `to`s from the other data.frame, leveraging 
+    # on the same ordering across both
+    results_comp <- results_comp |>
+        dplyr::mutate(
+            parameter = sub("theta_diff", "theta", parameter),
+            includes_zero = 0 >= q025 & 0 <= q975
+        )
+
+    # Retrieve the index to make the connection to the correct transition
+    # (from and to) and add this information to both data.frames separately
+    for(i in seq_len(nrow(combos))) {
+        # For the fit results
+        idt <- grepl(
+            rownames(combos)[i],
+            results_fit$parameter,
+            fixed = TRUE
+        )
+        results_fit$from[idt] <- combos$s_0[i]
+        results_fit$to[idt] <- combos$s_t[i]
+
+        # For the comparison results
+        idt <- grepl(
+            rownames(combos)[i],
+            results_comp$parameter,
+            fixed = TRUE
+        )
+        results_comp$from[idt] <- combos$s_0[i]
+        results_comp$to[idt] <- combos$s_t[i]
+    }
 
     # Define the output, save, and return
     output <- list(
@@ -326,8 +466,9 @@ estimate <- function(data = data,
             `colnames<-` (names(x)),
         "fit" = fit,
         "diagnostics" = diagnostics,
-        "summary" = results,
-        "summary_per_chain" = rstan::summary(fit)
+        "summary" = results_fit,
+        "summary_per_chain" = rstan::summary(fit),
+        "comparison" = results_comp
     )
 
     if(!is.null(filename)) {
@@ -342,6 +483,7 @@ estimate <- function(data = data,
 #   - Across all conditions
 #   - For each possibility separately
 results <- estimate(
+    data, 
     model_name = "baseline",
     filename = file.path("results", "baseline.Rds"),
     verbose = TRUE, 
@@ -355,6 +497,7 @@ results <- estimate(
 #   - Across all conditions
 #   - Midpoint - Valenced
 results <- estimate(
+    data,
     x = list(
         "midpoint" = c("indifferent", "reluctant", "cautious", "neutral", "ambivalent"),
         "valenced" = c("strongly_disagree", "disagree", "agree", "strongly_agree")
@@ -371,48 +514,56 @@ results <- estimate(
 #   - Across all items 
 #   - Within condition 
 #   - Midpoint - Valenced
-results <- lapply(
-    unique(data$condition),
-    function(y) estimate(
-        data = data[data$condition == y, ],
-        x = list(
-            "midpoint" = c("indifferent", "reluctant", "cautious", "neutral", "ambivalent"),
-            "valenced" = c("strongly_disagree", "disagree", "agree", "strongly_agree")
-        ),
-        model_name = "midpoint-condition",
-        verbose = TRUE, 
-        cores = 4, 
-        iter = 20000, 
-        warmup = 10000
-    )
-) |>
-    `names<-` (unique(data$condition))
-
-saveRDS(results, file.path("results", "midpoint-condition.Rds"))
+results <- estimate(
+    data,
+    x = list(
+        "midpoint" = c("indifferent", "reluctant", "cautious", "neutral", "ambivalent"),
+        "valenced" = c("strongly_disagree", "disagree", "agree", "strongly_agree")
+    ),
+    model_name = "midpoint-condition",
+    filename = file.path("results", "midpoint-condition.Rds"),
+    conditions = c(
+        "control - integration - conflict",
+        "control",
+        "integration",
+        "conflict"
+    ),
+    verbose = TRUE, 
+    cores = 4, 
+    iter = 20000, 
+    warmup = 10000
+)
 
 # ANALYSIS 4: 
 #   - Across all items 
 #   - Within condition 
 #   - Midpoint - Valenced
-results <- lapply(
-    unique(data$condition),
-    function(y) estimate(
-        data = data[data$condition == y, ],
-        x = list(
-            "indifferent" = "indifferent", 
-            "reluctant" = "reluctant", 
-            "cautious" = "cautious", 
-            "neutral" = "neutral", 
-            "ambivalent" = "ambivalent",
-            "valenced" = c("strongly_disagree", "disagree", "agree", "strongly_agree")
-        ),
-        model_name = "midpoint-differentiated-condition",
-        verbose = TRUE, 
-        cores = 4, 
-        iter = 20000, 
-        warmup = 10000
-    )
-) |>
-    `names<-` (unique(data$condition))
+results <- estimate(
+    data,
+    x = list(
+        "indifferent" = "indifferent", 
+        "reluctant" = "reluctant", 
+        "cautious" = "cautious", 
+        "neutral" = "neutral", 
+        "ambivalent" = "ambivalent",
+        "valenced" = c("strongly_disagree", "disagree", "agree", "strongly_agree")
+    ),
+    model_name = "midpoint-differentiated-condition",
+    filename = file.path("results", "midpoint-differentiated-condition.Rds"),
+    conditions = c(
+        "control - integration - conflict",
+        "control",
+        "integration",
+        "conflict"
+    ),
+    verbose = TRUE, 
+    cores = 4, 
+    iter = 40000, 
+    warmup = 20000
+)
 
-saveRDS(results, file.path("results", "midpoint-differentiated-condition.Rds"))
+# For the final analysis, let's look at the differences between conditions
+# that are greater/lower than 0
+results$comparison |>
+    dplyr::filter(!includes_zero) |>
+    View()
