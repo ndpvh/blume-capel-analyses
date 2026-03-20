@@ -562,8 +562,32 @@ results <- estimate(
     warmup = 25000
 )
 
-# For the final analysis, let's look at the differences between conditions
+# For the final two analyses, let's look at the differences between conditions
 # that are greater/lower than 0
-results$comparison |>
+readRDS(
+    file.path("results", "midpoint-condition.Rds")
+)$comparison |>
     dplyr::filter(!includes_zero) |>
     View()
+
+    ## Interpretation: There is an increased movement towards the midpoint 
+    ## response in the integration condition compared to the control condition 
+    ## and the conflict condition. In the meantime, this is also reflected in 
+    ## a lowered tendency to remain in the valenced states within these same 
+    ## conditions.
+
+readRDS(
+    file.path("results", "midpoint-differentiated-condition.Rds")
+)$comparison |>
+    dplyr::filter(!includes_zero) |>
+    View()
+
+    ## Interpretation: When compared to the control condition, in the integration 
+    ## condition, there is an increased tendency to move from a valenced state 
+    ## to either a reluctant or ambivalent state, and less so to remain within 
+    ## the valenced state. Simultaneously, people also become less indifferent 
+    ## in the integration condition. 
+    ##
+    ## When compared to the conflict condition, there is a decreased tendency
+    ## in the integration condition to move from a reluctant state to a valenced
+    ## state, and a decreased tendency to remain in the valenced state.
