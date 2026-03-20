@@ -11,7 +11,7 @@ source(file.path("scripts", "utils.R"))
 
 # Load the data + A correction in a typo in the column names
 data <- data.table::fread(
-    file.path("data", "pilot.csv"),
+    file.path("data", "PILOT_RAW.csv"),
     data.table = FALSE
 )[-c(1:2), ] 
 
@@ -138,7 +138,7 @@ data <- data |>
 # Save these data
 data.table::fwrite(
     data, 
-    file.path("data", "data_cprob.csv")
+    file.path("data", "PILOT.csv")
 )
 
 
