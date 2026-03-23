@@ -1,6 +1,8 @@
 ################################################################################
 # PURPOSE: Estimate the conditional probability matrix defining switches 
 #          between one or the other responses after the experimental task.
+#
+#          For this, only the PILOT data are used.
 ################################################################################
 
 ################################################################################
