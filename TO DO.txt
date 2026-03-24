@@ -1,0 +1,8 @@
+MILLER:
+    - Test difference in probability of choosing the neutral response between 
+      conditions
+    - Test difference in reason for choosing a response between conditions
+
+PILOT:
+    - Difference in attitudes pre across conditions
+    - Differences in attitudes post across conditions
