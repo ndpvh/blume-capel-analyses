@@ -100,9 +100,15 @@ View(result)
 ################################################################################
 # MILLER
 
-# Per item descriptives
+# Per item descriptives. Recode the don't know answer to a neutral one, as it
+# reflects caution
 data[["MILLER"]] <- data[["MILLER"]] |>
     dplyr::mutate(
+        attitude = ifelse(
+            attitude == 6, 
+            3, 
+            attitude
+        ),
         item = paste(part, question, sep = "_")
     )
 rows <- unique(data[["MILLER"]]$item)
