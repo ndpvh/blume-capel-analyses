@@ -105,14 +105,14 @@ The code to run this analysis can be found in `response_distribution.R`. Note th
 
 In the `PILOT` dataset, we attempted to manipulate midpoint responding through the inclusion of an integration or conflict task and then measuring the change in the participants' attitudes. To investigate the success of our manipulation, we estimated the probability of participant's to change from a particular starting state $S(0)$ to another state $S(1)$ after completing the task with a conditional probability matrix, specifically:
 
-\begin{equation}
+```math
     \Pi(S(1) | S(0)) = \begin{bmatrix}
         \pi_{s_1 | s_1} & \pi_{s_1 | s_2} & \cdots & \pi_{s_1 | s_n} \\
         \pi_{s_2 | s_1} & \pi_{s_2 | s_2} & \cdots & \pi_{s_2 | s_n} \\
         \vdots & \vdots & \ddots & \vdots \\
         \pi_{s_n | s_1} & \pi_{s_n | s_2} & \cdots & \pi_{s_n | s_n} 
     \end{bmatrix}
-\end{equation}
+```
 
 where $n$ is the number of discrete states that participants can switch to. In our analyses, these represent indifference, reluctance, caution, neutrality, ambivalence, and valenced (pro/contra) answers. Note that all probabilities $\pi$ sum to $1$ for each column.
 
