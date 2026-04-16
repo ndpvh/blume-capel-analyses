@@ -49,11 +49,10 @@ source("./scripts/lazy functions v2.R")
 ########################
 
 
-all_mid_switchers <- all_changes_long %>%
-  pivot_wider(names_from = time, values_from = midpoint) %>%
+all_mid_switchers <- all_changes %>%
   filter(pre_mid == 0)
 
-all_model_switch1 <- glmer(post_mid ~ Condition + (1|pseudo) + (1|item),
+all_model_switch1 <- glmer(post_mid ~ Condition + (1|pseudo) + (1|var),
                            data = all_mid_switchers,
                            family = binomial)
 to_midpoint1 <- summary(all_model_switch1)
@@ -120,7 +119,7 @@ write_clip(to_midpoint_coefs)
 ########################
 
 
-all_change_model1 <- glmer(moved_to_mid ~ Condition + (1|pseudo) + (1|item),
+all_change_model1 <- glmer(moved_to_mid ~ Condition + (1|pseudo),
                            data = all_changes_rewide,
                            family = binomial)
 
@@ -128,8 +127,8 @@ to_mid_vs_not1 <- summary(all_change_model1)
 
 # no random effect for item
 
-all_change_model2 <- glmer(moved_to_mid ~ Condition + (1|pseudo),
-                          data = all_changes_rewide,
+all_change_model2 <- glmer(mid_success ~ Condition + (1|pseudo),
+                          data = all_changes,
                           family = binomial)
 
 to_mid_vs_not2 <- summary(all_change_model2)
@@ -196,7 +195,7 @@ write_clip(to_mid_vs_not_coefs)
 
 ##########
 
-model_direction1 <- glmer(toward_mid ~ Condition + (1|pseudo) + (1|item),
+model_direction1 <- glmer(toward_mid ~ Condition + (1|pseudo),
                          family = binomial,
                          data = all_changers)
 
@@ -251,69 +250,4 @@ con_change_coefs <- sig_coefs(
 )
 
 write_clip(con_change_coefs)
-
-##########
-
-# As a within effect:
-
-##########
-
-all_model_changers1 <- glmer(midpoint ~ time * Condition + (1|pseudo) + (1|item),
-                             data = all_changers_long,
-                             family = binomial)
-
-conChange_wi1 <- summary(all_model_changers1)
-
-# can do without random effects, both collapsed to 0
-
-all_model_changers2 <- glm(midpoint ~ time * Condition,
-                            data = all_changers_long,
-                            family = binomial)
-
-conChange_wi2 <- summary(all_model_changers2)
-
-all_model_changers3 <- glm(midpoint ~ time * Condition*scale(Knowledge)*scale(Importance),
-                            data = all_changers_long,
-                            family = binomial)
-
-conChange_wi3 <- summary(all_model_changers3)
-
-
-all_model_changers4 <- glm(midpoint ~ time * Condition*scale(Importance),
-                            data = all_changers_long,
-                            family = binomial)
-
-conChange_wi4 <- summary(all_model_changers4)
-
-
-
-all_model_changers5 <- glm(midpoint ~ time * Condition*scale(Knowledge),
-                            data = all_changers_long,
-                            family = binomial)
-
-conChange_wi5 <- summary(all_model_changers5)
-
-AIC(all_model_changers2, all_model_changers3, all_model_changers4, all_model_changers5)
-
-aov_conChg_wi1 <- car::Anova(all_model_changers1)
-aov_conChg_wi2 <- car::Anova(all_model_changers2)
-aov_conChg_wi3 <- car::Anova(all_model_changers3)
-aov_conChg_wi4 <- car::Anova(all_model_changers4)
-aov_conChg_wi5 <- car::Anova(all_model_changers5)
-
-conChg_wi_coefs <- sig_coefs(
-  conChange_wi1,
-  aov_conChg_wi1,
-  conChange_wi2,
-  aov_conChg_wi2,
-  conChange_wi3,
-  aov_conChg_wi3,
-  conChange_wi4,
-  aov_conChg_wi4,
-  conChange_wi5,
-  aov_conChg_wi5,
-  p = 0.10
-)
-
-write_clip(conChg_wi_coefs)
 

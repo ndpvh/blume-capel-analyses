@@ -1,6 +1,6 @@
 ################################################################################
 # PURPOSE: Perform analyses targeted at understanding whether the 
-# manipulations worked. All attitude items for both topics. Full sample.
+# manipulations worked. Economic items only. Full sample.
 ################################################################################
 
 
