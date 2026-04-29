@@ -17,7 +17,9 @@ source("./scripts/lazy-functions-v2.R")
 
 pseudo_data <- read.csv2("./data/pseudo_data.csv")
 
-raw_recoded1 <- recode_items(pseudo_data)
+
+raw_recoded1 <- recode_items(pseudo_data) %>% rename(POL = Pol_1) %>%
+  relocate(POL, .after = last_col())
 
 trim_raw_recoded1 <- raw_recoded1[-c(1,2), -1] %>% trim_items()
 
@@ -83,15 +85,19 @@ medium_data1 <- medium_rare_data1 %>%
     Meat_Mids_Post = rowSums(
       across(matches("^Meat.Post"), ~ .x %in% c(3, 6, 7, 8, 9)),
       na.rm = TRUE
-    ))
+    ), 
+    POL = as.numeric(POL)
+    ) %>% relocate(POL, .after = last_col())
+ 
 
 
-all_pre_data <- medium_data1 %>% select(1, 3:11,, 28, 29, 31:33, 45:56)
 
-all_post_data <- medium_data1 %>% select(1, 18:23, 25:27, 40:56)
+all_pre_data <- medium_data1 %>% select(1, 3:11,, 28, 29, 31:33, 45:61)
+
+all_post_data <- medium_data1 %>% select(1, 18:23, 25:27, 40:61)
 
 all_changes <- medium_data1 %>%
-  select(1, 3:11, 18:23, 25:29, 31:33, 40:56) %>%
+  select(1, 3:11, 18:23, 25:29, 31:33, 40:61) %>%
   pivot_longer(
     cols = matches("\\.(Pre|Post)\\."),
     names_to = c("var", "time", "num"),
@@ -128,7 +134,7 @@ all_changes <- medium_data1 %>%
       Post %in%  c(3, 6, 7, 8, 9) ~ 1,
       TRUE ~ 0
     ),
-    mid_change = case_when(
+    mid_success = case_when(
       !(Pre %in% c(3, 6, 7, 8, 9)) & Post %in% c(3, 6, 7, 8, 9) ~ 1,
       TRUE ~ 0
     ),
@@ -197,8 +203,21 @@ all_changes <- medium_data1 %>%
     indif_bin = case_when(
       Pre != 3 & Post == 3 ~ 1,
       TRUE ~ 0
-    ))
+    ),
+    imp_scaled = as.numeric(scale(Importance)),
+    knw_scaled = as.numeric(scale(Knowledge)),
+    pol_scaled = as.numeric(scale(POL))
+  )
 
+all_changes_collapsed <- all_changes %>%
+  group_by(pseudo, Condition) %>%
+  summarise(
+    mid_success = sum(mid_success, na.rm = TRUE),
+    imp_scaled = first(imp_scaled),
+    knw_scaled = first(knw_scaled),
+    pol_scaled = first(pol_scaled),
+    .groups = "drop"
+  )
 
 all_changes_long <- all_changes %>%
   pivot_longer(
@@ -210,6 +229,30 @@ all_changes_long <- all_changes %>%
     time = factor(time, levels = c("pre_mid", "post_mid")),
     Condition = factor(Condition),
     item = paste(var, num, sep = "_")
+  )
+
+
+meat_changes <- all_changes %>% filter(var == "Meat")
+
+meat_changes_collapsed <- meat_changes %>%
+  group_by(pseudo, Condition) %>%
+  summarise(
+    mid_success = sum(mid_success, na.rm = TRUE),
+    imp_scaled = first(imp_scaled),
+    knw_scaled = first(knw_scaled),
+    pol_scaled = first(pol_scaled),
+    .groups = "drop"
+  )
+
+econ_changes <- all_changes %>% filter(var != "Meat")
+econ_changes_collapsed <- econ_changes %>%
+  group_by(pseudo, Condition) %>%
+  summarise(
+    mid_success = sum(mid_success, na.rm = TRUE),
+    imp_scaled = first(imp_scaled),
+    knw_scaled = first(knw_scaled),
+    pol_scaled = first(pol_scaled),
+    .groups = "drop"
   )
 
 
