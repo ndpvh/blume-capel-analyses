@@ -1,7 +1,8 @@
 *.docx
 *.pdf
-results/*
 *_RAW*
 *Niels*
 data/MILLER_1*
 *DS_Store*
+.Rproj.user
+.positai

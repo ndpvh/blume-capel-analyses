@@ -1,0 +1,143 @@
+---
+title: "Distributions of (Simplified) Answer Types at T1 and T2"
+author: "Thomas Miller"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, out.width = "100%")
+setwd(here::here())
+
+library("haven")
+library("tidyverse")
+library(lme4)
+
+getwd()
+
+source("./scripts/preprocessing.R")
+source("./scripts/lazy-functions-v2.R")
+```
+
+# Distribution of simplified response types at T1, by Condition.
+
+Note: All midpoint types collapsed to value 3
+
+
+```{r, echo=FALSE}
+
+all_simple_pre <- table_maker(
+  df = all_changes,
+  var1 = "Condition",
+  var2 = "pre_simple",
+  stats = "counts"
+)
+
+barplot_maker(df = all_changes, 
+              var1 = 'Condition', 
+              var2 = "pre_simple",
+              main = "Simplified Answers Per Condition - T1",
+              xlab = "Response Type",
+    legend_labels = c(
+  "Control\nCondition\n",
+  "Ambivalence\nCondition\n",
+  "Integration\nCondition\n"
+),
+margins = NULL)
+
+```
+
+
+Given that there is imbalance in the number of participants per condition, look at proportions as well.
+
+Note: in the table, proportions sum to 1.00 row-wise.
+
+```{r, echo=FALSE}
+
+all_simple_pre_prop <- table_maker(
+  df = all_changes,
+  var1 = "Condition",
+  var2 = "pre_simple",
+  stats = "props"
+)
+
+barplot_maker(df = all_changes, 
+              var1 = 'Condition', 
+              var2 = "pre_simple",
+              use_prop = TRUE,
+              main = "Simplified Answer Proportions Per Condition - T1",
+              xlab = "Response Type",
+    legend_labels = c(
+  "Control\nCondition\n",
+  "Ambivalence\nCondition\n",
+  "Integration\nCondition\n"
+),
+              margins = NULL)
+
+
+
+```
+
+# Distribution of simplified response types at T2, by Condition.
+
+Note: All midpoint types collapsed to value 3
+
+```{r, echo=FALSE}
+
+all_simple_post <- table_maker(
+  df = all_changes,
+  var1 = "Condition",
+  var2 = "post_simple",
+  stats = "counts"
+)
+
+barplot_maker(df = all_changes, 
+              var1 = 'Condition', 
+              var2 = "post_simple",
+              main = "Simplified Answers Per Condition - T2",
+              xlab = "Response Type",
+    legend_labels = c(
+  "Control\nCondition\n",
+  "Ambivalence\nCondition\n",
+  "Integration\nCondition\n"
+), margins = NULL)
+
+```
+
+
+
+
+
+
+Given that there is imbalance in the number of participants per condition,look at proportions as well.
+
+Note: in the table, proportions sum to 1.00 row-wise.
+
+
+
+```{r, echo=FALSE}
+
+
+all_simple_post_prop <- table_maker(
+  df = all_changes,
+  var1 = "Condition",
+  var2 = "post_simple",
+  stats = "props"
+)
+
+barplot_maker(df = all_changes, 
+              var1 = 'Condition', 
+              var2 = "post_simple",
+              use_prop = TRUE,
+              main = "Simplified Answer Proportions Per Condition - T2",
+              xlab = "Response Type",
+    legend_labels = c(
+  "Control\nCondition\n",
+  "Ambivalence\nCondition\n",
+  "Integration\nCondition\n"
+), margins = NULL)
+
+```
+
+

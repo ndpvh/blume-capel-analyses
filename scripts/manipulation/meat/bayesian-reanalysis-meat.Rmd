@@ -1,0 +1,285 @@
+---
+title: "Bayesian Reanalysis – Midpoint Success (meatomic Items)"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+For the meat items, Condition was not a reliable predictor, but rather importance
+predicted less likelihood to move toward the midpoint. Howeve, again no model
+is more likely than the null.
+
+
+
+Note: the pathing assumes you start in the root "blume-capel-analysis".
+```{r setup, message=FALSE, warning=FALSE, echo=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+setwd(here::here())
+
+library("haven")
+library("tidyverse")
+library(clipr)
+library(brms)
+library(cmdstanr)
+
+getwd()
+
+source("./scripts/preprocessing.R")
+source("./scripts/lazy-functions-v2.R")
+
+priors <- c(
+  prior(normal(0, 2), class = b),
+  prior(normal(0, 1.5), class = Intercept),
+  prior(exponential(1), class = sd)
+)
+
+priors_null <- c(
+  prior(normal(0, 1.5), class = Intercept),
+  prior(exponential(1), class = sd)
+)
+
+print(priors)
+print(priors_null)
+```
+
+# Null model (intercept only)
+
+```{r null-model}
+invisible(capture.output(
+  meat_mid_null <- brm(mid_success ~ 1 + (1 | pseudo),
+                      data = meat_changes,
+                      family = bernoulli(link = "logit"),
+                      prior = priors_null,
+                      save_pars = save_pars(all = TRUE),
+                      seed = 42,
+                      cores = 11,
+                      refresh = 0,
+                      file = "scripts/manipulation/meat/brm-models/meat_mid_null")
+))
+print(summary(meat_mid_null))
+```
+
+
+
+
+
+# Full model (all predictors)
+
+```{r all-predictors-model}
+invisible(capture.output(
+  meat_mid_meat_pred <- brm(
+    mid_success ~ Condition + imp_scaled + knw_scaled + pol_scaled + (1 |pseudo),
+    data = meat_changes,
+    family = bernoulli(link = "logit"),
+    prior = priors,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_mid_meat_pred"
+  )))
+print(summary(meat_mid_meat_pred))
+```
+
+
+# Condition only
+
+```{r cond-model}
+invisible(capture.output(
+  meat_mid_cond <- brm(
+    mid_success ~ Condition + (1 | pseudo),
+    data = meat_changes,
+    family = bernoulli(link = "logit"),
+    prior = priors,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_mid_cond"
+  )
+))
+print(summary(meat_mid_cond))
+```
+
+
+# Importance only
+
+```{r imp-model}
+invisible(capture.output(
+  meat_mid_imp <- brm(mid_success ~ imp_scaled + (1 | pseudo),
+                     data = meat_changes,
+                     family = bernoulli(link = "logit"),
+                     prior = priors,
+                     save_pars = save_pars(all = TRUE),
+                     seed = 42,
+                     cores = 11,
+                     refresh = 0,
+                     file = "scripts/manipulation/meat/brm-models/meat_mid_imp")
+))
+print(summary(meat_mid_imp))
+```
+
+# Knowledge only
+
+```{r knw-model}
+invisible(capture.output(
+  meat_mid_knw <- brm(mid_success ~ knw_scaled + (1 | pseudo),
+                     data = meat_changes,
+                     family = bernoulli(link = "logit"),
+                     prior = priors,
+                     save_pars = save_pars(all = TRUE),
+                     seed = 42,
+                     cores = 11,
+                     refresh = 0,
+                     file = "scripts/manipulation/meat/brm-models/meat_mid_knw")
+))
+print(summary(meat_mid_knw))
+```
+
+# Political orientation only
+
+```{r pol-model}
+invisible(capture.output(
+  meat_mid_pol <- brm(mid_success ~ pol_scaled + (1 | pseudo),
+                     data = meat_changes,
+                     family = bernoulli(link = "logit"),
+                     prior = priors,
+                     save_pars = save_pars(all = TRUE),
+                     seed = 42,
+                     cores = 11,
+                     refresh = 0,
+                     file = "scripts/manipulation/meat/brm-models/meat_mid_pol")
+))
+print(summary(meat_mid_pol))
+```
+
+# Condition + Importance
+
+```{r cond-imp-model}
+invisible(capture.output(
+  meat_mid_cond_imp <- brm(
+    mid_success ~ Condition + imp_scaled + (1 | pseudo),
+    data = meat_changes,
+    family = bernoulli(link = "logit"),
+    prior = priors,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_mid_cond_imp"
+  )
+))
+print(summary(meat_mid_cond_imp))
+```
+
+# Condition + Knowledge
+
+```{r cond-knw-model}
+invisible(capture.output(
+  meat_mid_cond_knw <- brm(
+    mid_success ~ Condition + knw_scaled + (1 | pseudo),
+    data = meat_changes,
+    family = bernoulli(link = "logit"),
+    prior = priors,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_mid_cond_knw"
+  )
+))
+print(summary(meat_mid_cond_knw))
+```
+
+# Condition + Political orientation
+
+```{r cond-pol-model}
+invisible(capture.output(
+  meat_mid_cond_pol <- brm(
+    mid_success ~ Condition + pol_scaled + (1 | pseudo),
+    data = meat_changes,
+    family = bernoulli(link = "logit"),
+    prior = priors,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_mid_cond_pol")
+))
+print(summary(meat_mid_cond_pol))
+```
+
+Unfortunately, though, no model is more likely than the null, not even close, even though the priors are very forgiving.
+
+# Model comparison
+
+```{r model-comparison}
+meat_bayes_models <- bayestestR::bayesfactor_models(
+  meat_mid_null,
+  meat_mid_cond,
+  meat_mid_imp,
+  meat_mid_knw,
+  meat_mid_pol,
+  meat_mid_cond_imp,
+  meat_mid_cond_knw,
+  meat_mid_cond_pol,
+  meat_mid_meat_pred
+)
+
+print(meat_bayes_models)
+
+bf_inclusion <- bayestestR::bayesfactor_inclusion(meat_bayes_models)
+print(bf_inclusion)
+```
+
+---
+
+
+```{r switchers-data}
+meat_mid_switchers <- meat_changes %>%
+  filter(pre_mid == 0)
+```
+
+```{r switchers-null}
+invisible(capture.output(
+  meat_switch_null1 <- brm(
+    mid_success ~ 1 + (1 | pseudo),
+    data = meat_mid_switchers,
+    family = bernoulli(link = "logit"),
+    prior = priors_null,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_switch_null"
+  )
+))
+print(summary(meat_switch_null1))
+```
+
+```{r switchers-full}
+invisible(capture.output(
+  meat_bayes_switch1 <- brm(
+    mid_success ~ Condition + imp_scaled + knw_scaled + pol_scaled + (1 |
+                                                                        pseudo),
+    data = meat_mid_switchers,
+    family = bernoulli(link = "logit"),
+    prior = priors,
+    save_pars = save_pars(all = TRUE),
+    seed = 42,
+    cores = 11,
+    refresh = 0,
+    file = "scripts/manipulation/meat/brm-models/meat_bayes_switch")
+))
+
+summary(meat_bayes_switch1)
+bayestestR::bayesfactor_parameters(meat_bayes_switch1)
+
+invisible(capture.output(
+  meat_switch_BF1 <- bayes_factor(meat_bayes_switch1, meat_switch_null1)
+))
+```
+
+```{r switchers-BF}
+print(meat_switch_BF1)
+```

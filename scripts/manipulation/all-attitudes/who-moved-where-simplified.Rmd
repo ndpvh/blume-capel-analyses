@@ -1,0 +1,54 @@
+---
+title: "Answers at T1 Compared to T2"
+author: "Thomas Miller"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(message = FALSE, warning = FALSE)
+knitr::opts_chunk$set(fig.width = 12, fig.height = 8, out.width = "100%")
+setwd(here::here())
+
+
+library("haven")
+library("tidyverse")
+library(lme4)
+
+source("./scripts/preprocessing.R")
+source("./scripts/lazy-functions-v2.R")
+```
+
+
+# Pre v Post
+Note: All midpoint types collapsed to value 3
+
+
+This table  allows us to see how many people changed from one given value to another between timepoints.
+
+```{r}
+all_simple_change <- table_maker(df = all_changes, 
+                                 var1 = "pre_simple", 
+                                 var2 = "post_simple")
+
+```
+
+# Proportion table
+
+For the below proportion table, proportions add to 1.00 row-wise. 
+
+So each value in the table is saying "For the given response at T1 (rows), what was the proportion of the given response at T2 (columns)?"
+
+```{r}
+
+all_simple_change_prop <- table_maker(df = all_changes, 
+                                      var1 = "pre_simple", 
+                                      var2 = "post_simple",
+                                      stats = "props")
+
+
+
+```
+
+
+
