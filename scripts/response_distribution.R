@@ -3,6 +3,31 @@
 # or trimodal, and what their distribution looks like.
 ################################################################################
 
+require(remode)
+require(dplyr)
+
+################################################################################
+# HELPER: cache results to disk
+#
+# If path already exists, .rds file loaded. Otherwise the model runs and then 
+# .rds is saved to path. 
+#
+# @param path File path of the .rds cache
+# @param expr Expression producing the result (only runs if no .rds found)
+#
+# @return The cached or freshly computed result
+load_or_run <- function(path, expr) {
+    if (file.exists(path)) {
+        message("Loading cached result from ", path)
+        return(readRDS(path))
+    }
+
+    result <- expr
+    dir.create(dirname(path), showWarnings = FALSE, recursive = TRUE)
+    saveRDS(result, path)
+    return(result)
+}
+
 ################################################################################
 # PRELIMINARY STUFF
 
@@ -16,6 +41,11 @@ data <- lapply(
     )
 ) |>
     `names<-` (filenames)
+
+### NOTE: need to add the "item" column to the MILLER dataset ###
+
+data[["MILLER"]]$item <- ordered(paste(data[["MILLER"]]$part, data[["MILLER"]]$question, sep = "."))
+
 
 # Create a function that will look for modes in the data based on frequency. 
 # It will furthermore include a significance test in the form of a nonparametric
@@ -240,28 +270,73 @@ modality <- function(data,
 # DEKKER
 
 idx <- grepl("s_", colnames(data[["DEKKER"]]), fixed = TRUE)
-result <- modality(
-    data[["DEKKER"]],
-    columns = colnames(data[["DEKKER"]])[idx],
-    unique_values = 1:7,
-    N = 10000
+Dekker_result <- load_or_run(
+    file.path("results", "modality_dekker.Rds"),
+    modality(
+        data[["DEKKER"]],
+        columns = colnames(data[["DEKKER"]])[idx],
+        unique_values = 1:7,
+        N = 10000
+    )
 )
 
-saveRDS(
-    result, 
-    file.path("results", "modality_dekker.Rds")
+View(Dekker_result$summary)
+
+###### ReMoDe analysis ######
+
+# First gathering up the relevant columns
+
+Dekker_cols <- data[["DEKKER"]] %>% select(starts_with("s_"))
+
+# Looping over each relevant column, removing NAs
+
+Dekker_remode_results <- load_or_run(
+  file.path("results", "remode_dekker.Rds"),
+  {
+    results <- lapply(names(Dekker_cols), function(col) {
+      x <- na.omit(Dekker_cols[[col]])
+      remode(x, format_raw = TRUE)
+    })
+    names(results) <- names(Dekker_cols)
+    results
+  }
 )
 
-View(result$summary)
+# Quick table format to get a quick overview
 
+Dekker_remode_table <- do.call(rbind, lapply(names(Dekker_remode_results), function(col) {
+  r <- Dekker_remode_results[[col]]
+  data.frame(
+    item = col,
+    nr_modes = r$nr_of_modes,
+    mode_locations = paste(r$mode_indeces, collapse = ", "),
+    p_values = paste(round(r$p_values, 4), collapse = ", "),
+    BF = paste(r$approx_bayes_factors, collapse = ", ")
+  )
+}))
 
+View(Dekker_remode_table)
 
+Dekker_modes_comparison <- data.frame(
+  item = Dekker_remode_table$item,
+  remode_modes = Dekker_remode_table$nr_modes,
+  manual_modes = Dekker_result$summary$number_modes,
+  manual_modes_sig = Dekker_result$summary$significant_modes
+)
+
+View(Dekker_modes_comparison)
 
 ################################################################################
 # MILLER
 
 # Here, we first remove the "don't know" response (response 6)
-result <- data[["MILLER"]] |>
+
+### HEADS UP: I changed the separator arg to "." rather than the "_" previously 
+### used, since the "item" column needed to be created previously.
+
+Miller_result_no_idk <- load_or_run(
+    file.path("results", "modality_miller.Rds"),
+    data[["MILLER"]] |>
     dplyr::select(id, item, attitude) |>
     dplyr::mutate(
         attitude = ifelse(
@@ -280,22 +355,21 @@ result <- data[["MILLER"]] |>
         columns = paste(
             rep(1:2, each = 4),
             rep(1:4, times = 2),
-            sep = "_"
+            sep = "."
         ),
         unique_values = 1:5,
         N = 10000
     )
-
-saveRDS(
-    result, 
-    file.path("results", "modality_miller.Rds")
 )
 
-View(result$summary)
+View(Miller_result_no_idk$summary)
 
 # Here, we first recode the "don't know" response to a neutral response
 # reflecting caution (what the investigators where interested in)
-result <- data[["MILLER"]] |>
+
+Miller_result_w_idk <- load_or_run(
+    file.path("results", "modality_miller_caution.Rds"),
+    data[["MILLER"]] |>
     dplyr::select(id, item, attitude) |>
     dplyr::mutate(
         attitude = ifelse(
@@ -314,20 +388,69 @@ result <- data[["MILLER"]] |>
         columns = paste(
             rep(1:2, each = 4),
             rep(1:4, times = 2),
-            sep = "_"
+            sep = "."
         ),
         unique_values = 1:5,
         N = 10000
     )
-
-saveRDS(
-    result, 
-    file.path("results", "modality_miller_caution.Rds")
 )
 
-View(result$summary)
+View(Miller_result_w_idk$summary)
 
+###### ReMoDe analysis ######
 
+# Getting the columns we are interested; retaining condition for later analysis
+# Also recoding 6 to 3, as "I don't know" falls under our definition of "Caution",
+# argued as a possible motivator for neutrality
+
+Miller_cols <- data[["MILLER"]] %>% 
+  dplyr::select(id, part, question, condition, attitude) %>%
+  dplyr::mutate(attitude = ifelse(attitude == 6, 3, attitude)) %>%
+  tidyr::pivot_wider(
+    id_cols = c(id, condition),
+    values_from = attitude, 
+    names_from = c(part, question)
+  )
+
+# Removing the id and condition columns
+Miller_remode_cols <- Miller_cols[,-c(1,2)]
+
+# Looping over each relevant column
+Miller_remode_results <- load_or_run(
+  file.path("results", "remode_miller.Rds"),
+  {
+    results <- lapply(names(Miller_remode_cols), function(col) {
+      remode(Miller_remode_cols[[col]], format_raw = TRUE)
+    })
+    names(results) <- names(Miller_remode_cols)
+    results
+  }
+)
+
+# Table format for quick look-over
+Miller_remode_table <- do.call(rbind, lapply(names(Miller_remode_results), function(col) {
+  r <- Miller_remode_results[[col]]
+  data.frame(
+    item = col,
+    nr_modes = r$nr_of_modes,
+    mode_locations = paste(r$mode_indeces, collapse = ", "),
+    p_values = paste(round(as.numeric(r$p_values), 4), collapse = ", "),
+    BF = paste(r$approx_bayes_factors, collapse = ", ")
+  )
+}))
+
+View(Miller_remode_table)
+
+###### Compare manual modality analysis to remode ######
+
+Miller_modes_comparison <- data.frame(
+  item = Miller_remode_table$item,
+  remode_modes = Miller_remode_table$nr_modes,
+  manual_modes = Miller_result_w_idk$summary$number_modes,
+  manual_modes_sig = Miller_result_w_idk$summary$significant_modes
+)
+
+View(Miller_modes_comparison)
 
 ################################################################################
 # PILOT
@@ -348,7 +471,9 @@ cols <- colnames(data[["PILOT"]])[idx | idy]
 # We first have to recode the the variables, but afterward we can do the mode 
 # count. In this recoding, we assign a value of 3 to all neutral options of the 
 # cross-Likert scale
-result <- data[["PILOT"]] |>
+pilot_result <- load_or_run(
+    file.path("results", "modality_pilot.Rds"),
+    data[["PILOT"]] |>
     dplyr::mutate(
         dplyr::across(
             hc1_pre:meat5_post,
@@ -367,10 +492,62 @@ result <- data[["PILOT"]] |>
         unique_values = 1:5,
         N = 10000
     )
-
-saveRDS(
-    result, 
-    file.path("results", "modality_pilot.Rds")
 )
 
-View(result$summary)
+View(pilot_result$summary)
+
+
+###### ReMoDe analysis ######
+ 
+
+# Data
+
+pilot_cols <- data[["PILOT"]] |>
+  dplyr::mutate(
+    dplyr::across(
+      hc1_pre:meat5_post,
+      function(x) x |>
+        dplyr::case_match(
+          "strongly_disagree" ~ 1, 
+          "disagree" ~ 2, 
+          "agree" ~ 4, 
+          "strongly_agree" ~ 5, 
+          .default = 3)
+      )
+    )
+
+target_cols <- names(pilot_cols %>% dplyr::select(hc1_pre:meat5_post))
+
+pilot_remode_results <- load_or_run(
+  file.path("results", "remode_pilot.Rds"),
+  {
+    results <- lapply(target_cols, function(col) {
+      x <- na.omit(pilot_cols[[col]])
+      remode(x, format_raw = TRUE)
+    })
+    names(results) <- target_cols
+    results
+  }
+)
+
+pilot_remode_table <- do.call(rbind, lapply(names(pilot_remode_results), function(col) {
+  r <- pilot_remode_results[[col]]
+  data.frame(
+    item = col,
+    nr_modes = r$nr_of_modes,
+    mode_locations = paste(r$mode_indeces, collapse = ", "),
+    p_values = paste(round(as.numeric(r$p_values), 4), collapse = ", "),
+    BF = paste(r$approx_bayes_factors, collapse = ", ")
+  )
+}))
+
+View(pilot_remode_table)
+
+pilot_modes_comparison <- data.frame(
+  item = pilot_remode_table$item,
+  remode_modes = pilot_remode_table$nr_modes,
+  manual_modes = pilot_result$summary$number_modes,
+  manual_modes_sig = pilot_result$summary$significant_modes
+)
+
+View(pilot_modes_comparison)
