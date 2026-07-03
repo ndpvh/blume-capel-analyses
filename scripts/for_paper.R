@@ -500,7 +500,9 @@ PILOT |>
 ################################################################################
 # SWITCHES
 #
-#   Analysis of the results for the Markov chain of the PILOT study.
+#   Analysis of the results for the Markov chain of the PILOT study. Note that 
+#   you have to run these analyses first, as GitHub doesn't allow such big files
+#   to be pushed.
 
 # Midpoint vs Valenced
 result <- readRDS(file.path("results", "midpoint-condition.Rds"))
