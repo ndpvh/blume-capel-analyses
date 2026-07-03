@@ -4,3 +4,7 @@ data/MILLER_1*
 *DS_Store*
 .Rproj.user
 .positai
+*depr*
+*.docx
+*.pdf
+*.png
